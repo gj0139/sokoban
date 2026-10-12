@@ -644,21 +644,31 @@ kbd{background:#0b1220; border:1px solid var(--line); border-bottom-width:2px; b
       try {
         if (fsActive()) { if (fsExit) await fsExit.call(document); }
         else await fsEnter.call(fsRoot);
-      } catch (e) { /* refused (permission/gesture) — stay windowed */ }
+      } catch (e) { console.warn('fullscreen refused:', e && e.message || e); }
     });
     document.addEventListener('fullscreenchange', fsSync);
     document.addEventListener('webkitfullscreenchange', fsSync);
 
-    // first tap on a touch device → straight into fullscreen, attempted once
+    // First tap on a touch device → straight into fullscreen, attempted once.
+    // Wait for the *click* so the tapped control has already acted: entering on
+    // pointerdown shifts layout mid-gesture and the browser drops that tap.
+    // The toggle's own taps are left to its click handler to avoid enter/exit churn.
     if (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) {
-      const auto = async () => {
-        window.removeEventListener('pointerdown', auto);
-        window.removeEventListener('touchend', auto);
+      let armed = true;
+      const auto = (ev) => {
+        if (!armed) return;
+        if (ev.target && ev.target.closest && ev.target.closest('#fsBtn')) return;
+        armed = false;
+        window.removeEventListener('click', auto);
         if (fsActive()) return;
-        try { await fsEnter.call(fsRoot); } catch (e) { /* ignore */ }
+        // defer to the next task: never share the event pipeline with the tap
+        // that armed us, so the tapped control always finishes its own work.
+        setTimeout(() => {
+          if (fsActive()) return;
+          fsEnter.call(fsRoot).catch((e) => console.warn('auto-fullscreen refused:', e && e.message || e));
+        }, 0);
       };
-      window.addEventListener('pointerdown', auto, { once: true, passive: true });
-      window.addEventListener('touchend', auto, { once: true, passive: true });
+      window.addEventListener('click', auto, { passive: true });
     }
   }
 
