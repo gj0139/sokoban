@@ -12,6 +12,7 @@
 - 方向键 / `W` `A` `S` `D` 移动；手机端支持**滑动手势 + 虚拟方向键**
 - 撤销（`Z`，无限步）、重玩（`R`）、选关（逐关解锁，标记 ✓ 最佳步数）
 - 步数 / 推动次数统计，箱子推上目标会变绿发光
+- **手机端默认全屏**：首次触摸自动进入全屏，工具栏也有 ⛶ 全屏开关；配合 PWA manifest（`display: fullscreen`）**添加到主屏幕后启动即全屏**，状态栏取主题色、刘海安全区已适配
 - 通关弹层与记录，进度用 `localStorage` 自动保存，刷新不丢
 - 墙壳外的填充空格会被判定为「虚空」，不可走也不渲染
 
@@ -31,6 +32,9 @@
 | 文件 | 作用 |
 |------|------|
 | `sokoban.html` | 游戏本体：`<script id="engine">` 是纯逻辑引擎（无 DOM），其后是 UI 层 |
+| `index.html` | 首页入口，秒转发到游戏 |
+| `manifest.json` | PWA 清单，`display: fullscreen` 让主屏幕启动即全屏 |
+| `assets/icon-192.png` `assets/icon-512.png` | 应用图标，由 `tools/make-icon.mjs` 零依赖生成 |
 | `tools/engine.test.mjs` | 引擎单元测试（12 条） |
 | `tools/verify-embed.mjs` | 校验内嵌关卡与参考数据逐字一致、且不会开局即通关 |
 | `tools/solve.mjs` | BFS + 死格剪枝求解器，证明每一关都可解并给出参考解 |
@@ -54,6 +58,12 @@ node tools/solve.mjs
 
 # 本地试玩 http://127.0.0.1:8321/sokoban.html
 node tools/serve.mjs
+
+# 部署后冒烟检查：首页转发 / 游戏本体 / manifest / 图标
+node tools/check-live.mjs
+
+# 重新生成 PWA 图标（零依赖手写 PNG 编码器）
+node tools/make-icon.mjs
 ```
 
 ## 开发方式
