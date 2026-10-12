@@ -23,16 +23,21 @@ function check(text) {
 }
 
 const picked = [];
-for (let i = 0; i < LEVELS.length && picked.length < 20; i++) {
+const stats = { invalid: 0, players: 0, boxes: 0, big: 0 };
+let maxW = 0, maxH = 0;
+for (let i = 0; i < LEVELS.length; i++) {
   const lvl = LEVELS[i];
   const info = check(lvl);
-  if (info.players !== 1) { console.warn(`  skip #${i + 1}: ${info.players} players`); continue; }
-  if (info.boxes !== info.goals) { console.warn(`  skip #${i + 1}: ${info.boxes} boxes vs ${info.goals} goals`); continue; }
-  if (info.w > 16 || info.h > 14) { console.warn(`  skip #${i + 1}: too big ${info.w}x${info.h}`); continue; }
+  if (info.players !== 1) { stats.players++; console.warn(`  skip #${i + 1}: ${info.players} players`); continue; }
+  if (info.boxes !== info.goals) { stats.boxes++; console.warn(`  skip #${i + 1}: ${info.boxes} boxes vs ${info.goals} goals`); continue; }
+  if (info.w > 16 || info.h > 14) stats.big++;
+  maxW = Math.max(maxW, info.w);
+  maxH = Math.max(maxH, info.h);
   picked.push({ n: i + 1, lvl, info });
 }
 
-console.log(`picked ${picked.length} levels`);
+console.log(`picked ${picked.length} / ${LEVELS.length} levels  (skipped: ${stats.players} bad players, ${stats.boxes} box/goal mismatch)`);
+console.log(`largest board: ${maxW} x ${maxH}, ${stats.big} levels wider/taller than 16x14`);
 for (const p of picked) console.log(`  Microban #${String(p.n).padStart(3)}  ${p.info.w}x${p.info.h}  boxes=${p.info.boxes}`);
 
 const body = picked.map((p) => {
