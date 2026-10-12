@@ -1,0 +1,4 @@
+# solver output
+tools/*.log
+# generated intermediate level payload (regenerate with tools/build-levels.mjs)
+tools/levels-embed.js
