@@ -102,12 +102,14 @@ function solve(levelText, maxNodes = 3000000) {
   return { path: null, nodes };
 }
 
+const MAX_NODES = Number(process.env.SOLVE_MAX_NODES || 3000000);
+
 const want = process.argv.slice(2).map(Number);
 const targets = want.length ? want : LEVELS.map((_, i) => i);
 let failed = 0;
 for (const i of targets) {
   const t0 = Date.now();
-  const { path, nodes } = solve(LEVELS[i]);
+  const { path, nodes } = solve(LEVELS[i], MAX_NODES);
   if (path) {
     console.log(`level ${String(i + 1).padStart(2)}: solved in ${path.length} moves (${nodes} states, ${Date.now() - t0}ms)\n            ${path}`);
   } else {
