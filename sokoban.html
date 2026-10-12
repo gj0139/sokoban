@@ -2,8 +2,17 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1">
 <title>推箱子 · Sokoban</title>
+<meta name="description" content="单文件零依赖网页版推箱子，Microban 精选 20 关">
+<meta name="theme-color" content="#0f172a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="推箱子">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <style>
 :root{
   --bg:#0f172a; --panel:#1e293b; --line:#334155; --ink:#e2e8f0; --muted:#94a3b8;
@@ -12,12 +21,18 @@
   --cell:44px;
 }
 *{box-sizing:border-box}
-html,body{height:100%}
+html{height:100%; overscroll-behavior:none; -webkit-text-size-adjust:100%}
 body{
-  margin:0; background:radial-gradient(1200px 600px at 50% -10%, #1d2b45 0%, var(--bg) 60%);
+  margin:0; min-height:100dvh; background-color:var(--bg);
+  background-image:radial-gradient(1200px 600px at 50% -10%, #1d2b45 0%, var(--bg) 60%);
   color:var(--ink); font:15px/1.5 "Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
-  display:flex; flex-direction:column; align-items:center; gap:14px; padding:18px 14px 28px;
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  padding:calc(18px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+  overflow-y:auto; overscroll-behavior-y:none;
+  touch-action:manipulation; user-select:none; -webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;
 }
+:fullscreen,:-webkit-full-screen{background:var(--bg)}
 header{width:100%; max-width:720px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
 h1{font-size:20px; margin:0; letter-spacing:2px; font-weight:700}
 h1 small{font-size:12px; color:var(--muted); font-weight:400; letter-spacing:0; margin-left:8px}
@@ -118,6 +133,7 @@ kbd{background:#0b1220; border:1px solid var(--line); border-bottom-width:2px; b
   <select id="levelSelect" title="选择关卡"></select>
   <button id="undoBtn">↺ 撤销 <kbd>Z</kbd></button>
   <button id="restartBtn">⟲ 重玩 <kbd>R</kbd></button>
+  <button id="fsBtn" title="进入全屏（浏览器不支持时自动隐藏）">⛶ 全屏</button>
   <button class="primary" id="nextBtn">下一关 ▶</button>
 </div>
 
@@ -437,7 +453,7 @@ kbd{background:#0b1220; border:1px solid var(--line); border-bottom-width:2px; b
   const boardEl = $('board');
   const ui = {
     lv: $('lv'), moves: $('moves'), pushes: $('pushes'),
-    select: $('levelSelect'), undo: $('undoBtn'), restart: $('restartBtn'), next: $('nextBtn'),
+    select: $('levelSelect'), undo: $('undoBtn'), restart: $('restartBtn'), next: $('nextBtn'), fs: $('fsBtn'),
     overlay: $('overlay'), winText: $('winText'), again: $('againBtn'), overlayNext: $('overlayNext'),
   };
   const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -611,6 +627,40 @@ kbd{background:#0b1220; border:1px solid var(--line); border-bottom-width:2px; b
   document.querySelectorAll('.dpad button').forEach((b) => {
     b.addEventListener('click', () => doMove(b.dataset.dir));
   });
+
+  /* ---------- fullscreen ----------
+     Mobile browsers only shed their chrome in fullscreen, so the first touch
+     enters it automatically; browsers without the API hide the button. */
+  const fsRoot = document.documentElement;
+  const fsEnter = fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen;
+  const fsExit = document.exitFullscreen || document.webkitExitFullscreen;
+  const fsActive = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const fsSync = () => { ui.fs.textContent = fsActive() ? '⛶ 退出全屏' : '⛶ 全屏'; };
+
+  if (!fsEnter) {
+    ui.fs.style.display = 'none';
+  } else {
+    ui.fs.addEventListener('click', async () => {
+      try {
+        if (fsActive()) { if (fsExit) await fsExit.call(document); }
+        else await fsEnter.call(fsRoot);
+      } catch (e) { /* refused (permission/gesture) — stay windowed */ }
+    });
+    document.addEventListener('fullscreenchange', fsSync);
+    document.addEventListener('webkitfullscreenchange', fsSync);
+
+    // first tap on a touch device → straight into fullscreen, attempted once
+    if (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) {
+      const auto = async () => {
+        window.removeEventListener('pointerdown', auto);
+        window.removeEventListener('touchend', auto);
+        if (fsActive()) return;
+        try { await fsEnter.call(fsRoot); } catch (e) { /* ignore */ }
+      };
+      window.addEventListener('pointerdown', auto, { once: true, passive: true });
+      window.addEventListener('touchend', auto, { once: true, passive: true });
+    }
+  }
 
   let touch = null;
   boardEl.addEventListener('touchstart', (e) => {
