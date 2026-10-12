@@ -15,7 +15,7 @@ function stats(text) {
 }
 
 const expected = [];
-for (let i = 0; i < ALL.length && expected.length < 20; i++) {
+for (let i = 0; i < ALL.length; i++) {
   const s = stats(ALL[i]);
   if (s.players === 1 && s.boxes === s.goals) expected.push(ALL[i]);
 }
