@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>推箱子 · Sokoban</title>
+<style>
+:root{
+  --bg:#0f172a; --panel:#1e293b; --line:#334155; --ink:#e2e8f0; --muted:#94a3b8;
+  --wall:#475569; --wall-top:#64748b; --floor:#1b2536; --goal:#f59e0b;
+  --box:#f8fafc; --box-done:#22c55e; --player:#38bdf8;
+  --cell:44px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:radial-gradient(1200px 600px at 50% -10%, #1d2b45 0%, var(--bg) 60%);
+  color:var(--ink); font:15px/1.5 "Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  display:flex; flex-direction:column; align-items:center; gap:14px; padding:18px 14px 28px;
+}
+header{width:100%; max-width:720px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+h1{font-size:20px; margin:0; letter-spacing:2px; font-weight:700}
+h1 small{font-size:12px; color:var(--muted); font-weight:400; letter-spacing:0; margin-left:8px}
+.stats{display:flex; gap:8px; flex-wrap:wrap}
+.stat{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:6px 12px; font-size:13px; color:var(--muted)}
+.stat b{color:var(--ink); font-size:15px; margin-left:6px; font-variant-numeric:tabular-nums}
+.board-wrap{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; box-shadow:0 18px 40px -20px #000}
+#board{display:grid; gap:0; position:relative}
+.cell{width:var(--cell); height:var(--cell); position:relative}
+.cell.wall{background:linear-gradient(160deg,var(--wall-top),var(--wall)); box-shadow:inset 0 0 0 1px #00000030}
+.cell.floor{background:var(--floor)}
+.cell.void{background:transparent}
+.goal{position:absolute; inset:0; display:grid; place-items:center}
+.goal::before{content:""; width:42%; height:42%; border-radius:50%; border:3px dashed var(--goal); opacity:.75}
+/* boxes + player are absolutely positioned inside #board and moved with transform */
+.box{
+  position:absolute; top:0; left:0; width:var(--cell); height:var(--cell);
+  transition:transform .13s cubic-bezier(.2,.8,.3,1);
+}
+.box i{
+  display:block; position:absolute; inset:7%; border-radius:7px;
+  background:linear-gradient(150deg,#fde68a,#f59e0b);
+  box-shadow:inset 0 -4px 0 #00000025, 0 4px 8px -3px #000a;
+  transition:background .2s ease, box-shadow .2s ease;
+}
+.box i::after{
+  content:""; position:absolute; inset:20%; border:2px solid #00000030; border-radius:4px;
+}
+.box.done i{
+  background:linear-gradient(150deg,#86efac,#22c55e);
+  box-shadow:inset 0 -4px 0 #00000030, 0 0 16px #22c55e80;
+}
+.box.done i::after{border-color:#0b253655}
+.player{
+  position:absolute; top:0; left:0; width:var(--cell); height:var(--cell);
+  transition:transform .13s cubic-bezier(.2,.8,.3,1);
+}
+.player i{
+  display:block; position:absolute; inset:9%; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #bae6fd, var(--player) 60%, #0284c7);
+  box-shadow:0 4px 10px -3px #0ea5e9aa;
+  transition:transform .12s ease;
+}
+.player i::before,.player i::after{
+  content:""; position:absolute; top:32%; width:16%; height:16%; border-radius:50%; background:#0b2536;
+}
+.player i::before{left:22%} .player i::after{right:22%}
+.player[data-dir="right"] i{transform:translateX(9%)}
+.player[data-dir="left"] i{transform:translateX(-9%)}
+.player[data-dir="up"] i{transform:translateY(-9%)}
+.player[data-dir="down"] i{transform:translateY(9%)}
+.player.push i{box-shadow:0 4px 14px -3px #0ea5e9, 0 0 0 3px #38bdf855}
+.cell.bump{animation:bump .16s ease}
+@keyframes bump{50%{filter:brightness(1.5)}}
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; align-items:center}
+button{
+  font:inherit; color:var(--ink); background:var(--panel); border:1px solid var(--line);
+  border-radius:10px; padding:9px 16px; cursor:pointer; transition:.15s;
+}
+button:hover{border-color:#64748b; background:#27364b}
+button:active{transform:translateY(1px)}
+button.primary{background:linear-gradient(180deg,#2563eb,#1d4ed8); border-color:#3b82f6}
+select{font:inherit; color:var(--ink); background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:9px 10px}
+.help{color:var(--muted); font-size:13px; text-align:center; max-width:560px}
+kbd{background:#0b1220; border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:1px 6px; font-size:12px}
+.dpad{display:none; grid-template-columns:repeat(3,58px); grid-template-rows:repeat(3,52px); gap:6px; justify-content:center}
+.dpad button{padding:0; font-size:20px; touch-action:manipulation}
+.dpad .up{grid-area:1/2} .dpad .left{grid-area:2/1} .dpad .down{grid-area:2/2} .dpad .right{grid-area:2/3}
+.overlay{
+  position:fixed; inset:0; background:#0f172acc; backdrop-filter:blur(3px);
+  display:none; place-items:center; z-index:10; padding:20px;
+}
+.overlay.show{display:grid}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:26px 30px; text-align:center; max-width:340px; box-shadow:0 30px 60px -25px #000}
+.card h2{margin:0 0 6px; font-size:24px}
+.card p{margin:0 0 18px; color:var(--muted)}
+.card .row{display:flex; gap:10px; justify-content:center}
+@media (max-width:640px){
+  :root{--cell:34px}
+  .dpad{display:grid}
+  .help{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>推箱子<small>Microban 精选 20 关</small></h1>
+  <div class="stats">
+    <span class="stat">关卡<b id="lv">1</b></span>
+    <span class="stat">步数<b id="moves">0</b></span>
+    <span class="stat">推动<b id="pushes">0</b></span>
+  </div>
+</header>
+
+<div class="board-wrap"><div id="board"></div></div>
+
+<div class="toolbar">
+  <select id="levelSelect" title="选择关卡"></select>
+  <button id="undoBtn">↺ 撤销 <kbd>Z</kbd></button>
+  <button id="restartBtn">⟲ 重玩 <kbd>R</kbd></button>
+  <button class="primary" id="nextBtn">下一关 ▶</button>
+</div>
+
+<p class="help">方向键 / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动，把所有木箱推到虚线圆圈上即可过关</p>
+
+<div class="dpad">
+  <button class="up" data-dir="up">▲</button>
+  <button class="left" data-dir="left">◀</button>
+  <button class="down" data-dir="down">▼</button>
+  <button class="right" data-dir="right">▶</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="card">
+    <h2>🎉 过关！</h2>
+    <p id="winText">第 1 关 · 用了 0 步</p>
+    <div class="row">
+      <button id="againBtn">再玩一次</button>
+      <button class="primary" id="overlayNext">下一关 ▶</button>
+    </div>
+  </div>
+</div>
+
+<!--ENGINE-ANCHOR-->
+
+<script id="engine">
+/* Pure engine — no DOM. Loaded and unit-tested by tools/engine.test.mjs */
+(function (global) {
+  'use strict';
+  const DIRS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+
+  function parseLevel(text) {
+    const rows = String(text).replace(/\r/g, '').replace(/\n+$/, '').split('\n');
+    const height = rows.length;
+    const width = rows.reduce((m, r) => Math.max(m, r.length), 0);
+    const walls = [], floor = [], goals = [], boxes = [];
+    let player = null;
+
+    for (let y = 0; y < height; y++) {
+      walls[y] = []; floor[y] = []; goals[y] = [];
+      const row = rows[y];
+      for (let x = 0; x < width; x++) {
+        const c = x < row.length ? row[x] : ' ';
+        let isWall = false, isGoal = false, isFloor = true;
+        if (c === '#') { isWall = true; isFloor = false; }
+        else if (c === '.') { isGoal = true; }
+        else if (c === '+') { isGoal = true; player = { x, y }; }
+        else if (c === '*') { isGoal = true; boxes.push({ x, y }); }
+        else if (c === '$') { boxes.push({ x, y }); }
+        else if (c === '@') { player = { x, y }; }
+        walls[y][x] = isWall; goals[y][x] = isGoal; floor[y][x] = isFloor;
+      }
+    }
+    if (!player) throw new Error('level has no player (@)');
+
+    // Flood fill from the player: padding outside the shell is void, not floor.
+    const seen = Array.from({ length: height }, () => Array(width).fill(false));
+    const stack = [{ x: player.x, y: player.y }];
+    while (stack.length) {
+      const { x, y } = stack.pop();
+      if (x < 0 || y < 0 || x >= width || y >= height || seen[y][x]) continue;
+      seen[y][x] = true;
+      if (walls[y][x]) continue;
+      floor[y][x] = true;
+      stack.push({ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 });
+    }
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) if (!seen[y][x]) floor[y][x] = false;
+    }
+    return { width, height, walls, floor, goals, boxes, player };
+  }
+
+  function createGame(text) {
+    const level = parseLevel(text);
+    const state = {
+      player: { ...level.player },
+      boxes: level.boxes.map((b) => ({ ...b })),
+      moveCount: 0,
+      pushCount: 0,
+    };
+    const history = [];
+
+    const boxAt = (x, y) => state.boxes.find((b) => b.x === x && b.y === y);
+    const solid = (x, y) =>
+      x < 0 || y < 0 || x >= level.width || y >= level.height ||
+      level.walls[y][x] || !level.floor[y][x];
+
+    const snapshot = () => ({
+      player: { ...state.player },
+      boxes: state.boxes.map((b) => ({ ...b })),
+      moveCount: state.moveCount,
+      pushCount: state.pushCount,
+    });
+    const restore = (s) => {
+      state.player = { ...s.player };
+      state.boxes = s.boxes.map((b) => ({ ...b }));
+      state.moveCount = s.moveCount;
+      state.pushCount = s.pushCount;
+    };
+
+    const isWon = () => state.boxes.every((b) => level.goals[b.y][b.x]);
+    const boxOnGoalCount = () => state.boxes.filter((b) => level.goals[b.y][b.x]).length;
+
+    function move(dir) {
+      const d = DIRS[dir];
+      if (!d) return { moved: false, pushed: false, won: isWon() };
+      const nx = state.player.x + d.x, ny = state.player.y + d.y;
+      if (solid(nx, ny)) return { moved: false, pushed: false, won: false };
+      const box = boxAt(nx, ny);
+      if (box) {
+        const bx = nx + d.x, by = ny + d.y;
+        if (solid(bx, by) || boxAt(bx, by)) return { moved: false, pushed: false, won: false };
+        history.push(snapshot());
+        box.x = bx; box.y = by;
+        state.pushCount++;
+      } else {
+        history.push(snapshot());
+      }
+      state.player = { x: nx, y: ny };
+      state.moveCount++;
+      return { moved: true, pushed: !!box, won: isWon() };
+    }
+
+    function undo() {
+      const s = history.pop();
+      if (!s) return false;
+      restore(s);
+      return true;
+    }
+
+    function reset() {
+      restore({ player: level.player, boxes: level.boxes, moveCount: 0, pushCount: 0 });
+      history.length = 0;
+    }
+
+    return {
+      level,
+      get player() { return state.player; },
+      get boxes() { return state.boxes; },
+      get moveCount() { return state.moveCount; },
+      get pushCount() { return state.pushCount; },
+      get width() { return level.width; },
+      get height() { return level.height; },
+      get walls() { return level.walls; },
+      get floor() { return level.floor; },
+      get goals() { return level.goals; },
+      move, undo, reset, isWon, boxOnGoalCount,
+    };
+  }
+
+  global.Sokoban = { parseLevel, createGame, DIRS };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+
+<script>
+/* UI layer: owns DOM, input and progress. All game rules live in the engine above. */
+(() => {
+  'use strict';
+
+  // Microban 精选 20 关 — 关卡设计 David W. Skinner (2000)，可自由分发（署名）
+  const LEVELS = [
+    `####
+# .#
+#  ###
+#*@  #
+#  $ #
+#  ###
+####`,
+    `######
+#    #
+# #@ #
+# $* #
+# .* #
+#    #
+######`,
+    `  ####
+###  ####
+#     $ #
+# #  #$ #
+# . .#@ #
+#########`,
+    `########
+#      #
+# .**$@#
+#      #
+#####  #
+    ####`,
+    ` #######
+ #     #
+ # .$. #
+## $@$ #
+#  .$. #
+#      #
+########`,
+    `###### #####
+#    ###   #
+# $$     #@#
+# $ #...   #
+#   ########
+#####`,
+    `#######
+#     #
+# .$. #
+# $.$ #
+# .$. #
+# $.$ #
+#  @  #
+#######`,
+    `  ######
+  # ..@#
+  # $$ #
+  ## ###
+   # #
+   # #
+#### #
+#    ##
+# #   #
+#   # #
+###   #
+  #####`,
+    `#####
+#.  ##
+#@$$ #
+##   #
+ ##  #
+  ##.#
+   ###`,
+    `      #####
+      #.  #
+      #.# #
+#######.# #
+# @ $ $ $ #
+# # # # ###
+#       #
+#########`,
+    `  ######
+  #    #
+  # ##@##
+### # $ #
+# ..# $ #
+#       #
+#  ######
+####`,
+    `#####
+#   ##
+# $  #
+## $ ####
+ ###@.  #
+  #  .# #
+  #     #
+  #######`,
+    `####
+#. ##
+#.@ #
+#. $#
+##$ ###
+ # $  #
+ #    #
+ #  ###
+ ####`,
+    `#######
+#     #
+# # # #
+#. $*@#
+#   ###
+#####`,
+    `     ###
+######@##
+#    .* #
+#   #   #
+#####$# #
+    #   #
+    #####`,
+    ` ####
+ #  ####
+ #     ##
+## ##   #
+#. .# @$##
+#   # $$ #
+#  .#    #
+##########`,
+    `#####
+# @ #
+#...#
+#$$$##
+#    #
+#    #
+######`,
+    `#######
+#     #
+#. .  #
+# ## ##
+#  $ #
+###$ #
+  #@ #
+  #  #
+  ####`,
+    `########
+#   .. #
+#  @$$ #
+##### ##
+   #  #
+   #  #
+   #  #
+   ####`,
+    `#######
+#     ###
+#  @$$..#
+#### ## #
+  #     #
+  #  ####
+  #  #
+  ####`,
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const boardEl = $('board');
+  const ui = {
+    lv: $('lv'), moves: $('moves'), pushes: $('pushes'),
+    select: $('levelSelect'), undo: $('undoBtn'), restart: $('restartBtn'), next: $('nextBtn'),
+    overlay: $('overlay'), winText: $('winText'), again: $('againBtn'), overlayNext: $('overlayNext'),
+  };
+  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+
+  /* ---------- progress ---------- */
+  const SAVE_KEY = 'sokoban-progress-v1';
+  let progress = { index: 0, unlocked: 0, best: {} };
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) progress = Object.assign(progress, JSON.parse(raw));
+  } catch (e) { /* file:// without storage — run in memory */ }
+  const save = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) {} };
+
+  /* ---------- state ---------- */
+  let game = null;
+  let cellEls = [], boxEls = [], playerEl = null;
+
+  const place = (el, x, y) => {
+    el.style.transform = `translate(calc(var(--cell) * ${x}), calc(var(--cell) * ${y}))`;
+  };
+
+  function buildBoard() {
+    boardEl.style.gridTemplateColumns = `repeat(${game.width}, var(--cell))`;
+    boardEl.replaceChildren();
+    cellEls = [];
+    for (let y = 0; y < game.height; y++) {
+      const row = [];
+      for (let x = 0; x < game.width; x++) {
+        const c = document.createElement('div');
+        c.className = 'cell ' + (game.walls[y][x] ? 'wall' : game.floor[y][x] ? 'floor' : 'void');
+        if (game.goals[y][x]) {
+          const g = document.createElement('div');
+          g.className = 'goal';
+          c.append(g);
+        }
+        boardEl.append(c);
+        row.push(c);
+      }
+      cellEls.push(row);
+    }
+    boxEls = game.boxes.map(() => {
+      const b = document.createElement('div');
+      b.className = 'box';
+      b.append(document.createElement('i'));
+      boardEl.append(b);
+      return b;
+    });
+    playerEl = document.createElement('div');
+    playerEl.className = 'player';
+    playerEl.append(document.createElement('i'));
+    boardEl.append(playerEl);
+    sync();
+  }
+
+  function sync() {
+    game.boxes.forEach((b, i) => {
+      place(boxEls[i], b.x, b.y);
+      boxEls[i].classList.toggle('done', !!game.level.goals[b.y][b.x]);
+    });
+    place(playerEl, game.player.x, game.player.y);
+    ui.moves.textContent = game.moveCount;
+    ui.pushes.textContent = game.pushCount;
+    ui.lv.textContent = progress.index + 1;
+  }
+
+  function bump(dir) {
+    const [dx, dy] = DIRS[dir];
+    const x = game.player.x + dx, y = game.player.y + dy;
+    const cell = cellEls[y] && cellEls[y][x];
+    if (!cell) return;
+    cell.classList.remove('bump');
+    void cell.offsetWidth;
+    cell.classList.add('bump');
+  }
+
+  /* ---------- actions ---------- */
+  function doMove(dir) {
+    if (ui.overlay.classList.contains('show')) return;
+    playerEl.dataset.dir = dir;
+    const r = game.move(dir);
+    if (!r.moved) { bump(dir); return; }
+    playerEl.classList.toggle('push', r.pushed);
+    sync();
+    if (r.won) onWin();
+  }
+
+  function doUndo() {
+    if (ui.overlay.classList.contains('show')) return;
+    if (game.undo()) sync();
+  }
+
+  function restart() {
+    game.reset();
+    ui.overlay.classList.remove('show');
+    sync();
+  }
+
+  function onWin() {
+    const n = progress.index;
+    const prev = progress.best[n];
+    if (prev == null || game.moveCount < prev) progress.best[n] = game.moveCount;
+    progress.unlocked = Math.max(progress.unlocked, Math.min(n + 1, LEVELS.length - 1));
+    const last = n >= LEVELS.length - 1;
+    ui.winText.textContent = last
+      ? `全部 ${LEVELS.length} 关通关！最后一步数 ${game.moveCount}`
+      : `第 ${n + 1} 关 · 用了 ${game.moveCount} 步` + (prev != null && game.moveCount <= prev ? ' · 新纪录！' : '');
+    ui.overlayNext.textContent = last ? '↻ 从头再玩' : '下一关 ▶';
+    ui.overlay.classList.add('show');
+    fillSelect();
+    save();
+  }
+
+  function load(i) {
+    progress.index = Math.max(0, Math.min(LEVELS.length - 1, i | 0));
+    game = Sokoban.createGame(LEVELS[progress.index]);
+    buildBoard();
+    ui.overlay.classList.remove('show');
+    ui.next.disabled = progress.index >= LEVELS.length - 1;
+    fillSelect();
+    save();
+  }
+
+  function nextLevel() {
+    load(progress.index >= LEVELS.length - 1 ? 0 : progress.index + 1);
+  }
+
+  function fillSelect() {
+    if (ui.select.options.length !== LEVELS.length) {
+      ui.select.replaceChildren();
+      for (let i = 0; i < LEVELS.length; i++) {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = `第 ${i + 1} 关`;
+        ui.select.append(o);
+      }
+    }
+    for (let i = 0; i < LEVELS.length; i++) {
+      const o = ui.select.options[i];
+      const best = progress.best[i];
+      const locked = i > progress.unlocked;
+      o.textContent = `第 ${i + 1} 关${locked ? ' 🔒' : best != null ? ` ✓${best}` : ''}`;
+      o.disabled = locked;
+    }
+    ui.select.value = String(progress.index);
+  }
+
+  /* ---------- input ---------- */
+  const KEYS = {
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+    w: 'up', a: 'left', s: 'down', d: 'right', W: 'up', A: 'left', S: 'down', D: 'right',
+  };
+  document.addEventListener('keydown', (e) => {
+    if (e.target === ui.select) return;
+    if (ui.overlay.classList.contains('show')) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nextLevel(); }
+      return;
+    }
+    const dir = KEYS[e.key];
+    if (dir) { e.preventDefault(); doMove(dir); return; }
+    const k = e.key.toLowerCase();
+    if (k === 'z' || k === 'y') { e.preventDefault(); doUndo(); }
+    else if (k === 'r') { e.preventDefault(); restart(); }
+  });
+
+  ui.undo.addEventListener('click', doUndo);
+  ui.restart.addEventListener('click', restart);
+  ui.next.addEventListener('click', nextLevel);
+  ui.again.addEventListener('click', restart);
+  ui.overlayNext.addEventListener('click', nextLevel);
+  ui.select.addEventListener('change', () => load(Number(ui.select.value)));
+  document.querySelectorAll('.dpad button').forEach((b) => {
+    b.addEventListener('click', () => doMove(b.dataset.dir));
+  });
+
+  let touch = null;
+  boardEl.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    touch = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  boardEl.addEventListener('touchend', (e) => {
+    if (!touch) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.x, dy = t.clientY - touch.y;
+    touch = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    doMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  }, { passive: true });
+
+  load(progress.index);
+})();
+</script>
+</body>
+</html>
