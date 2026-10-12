@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>推箱子 · Sokoban</title>
+<meta http-equiv="refresh" content="0; url=sokoban.html">
+<style>
+  :root{color-scheme:dark}
+  body{
+    margin:0; min-height:100vh; display:grid; place-items:center;
+    background:radial-gradient(1200px 600px at 50% -10%, #1d2b45 0%, #0f172a 60%);
+    color:#e2e8f0; font:16px/1.6 "Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    text-align:center; padding:24px;
+  }
+  a{color:#38bdf8}
+  .spinner{
+    width:34px; height:34px; margin:0 auto 16px; border-radius:50%;
+    border:3px solid #334155; border-top-color:#38bdf8; animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+  <div>
+    <div class="spinner" aria-hidden="true"></div>
+    <p>正在打开游戏… 如果没有自动跳转，<a href="sokoban.html">点此进入</a>。</p>
+  </div>
+  <script>location.replace('sokoban.html');</script>
+</body>
+</html>
