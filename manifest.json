@@ -1,7 +1,7 @@
 {
   "name": "推箱子 · Sokoban",
   "short_name": "推箱子",
-  "description": "单文件零依赖网页版推箱子，Microban 精选 20 关，撤销 / 重玩 / 选关 / 进度存档",
+  "description": "单文件零依赖网页版推箱子，Microban 完整 155 关，撤销 / 重玩 / 选关 / 进度存档",
   "lang": "zh-CN",
   "dir": "ltr",
   "start_url": "./sokoban.html",
