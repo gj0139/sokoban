@@ -1,0 +1,19 @@
+{
+  "name": "推箱子 · Sokoban",
+  "short_name": "推箱子",
+  "description": "单文件零依赖网页版推箱子，Microban 精选 20 关，撤销 / 重玩 / 选关 / 进度存档",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./sokoban.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
