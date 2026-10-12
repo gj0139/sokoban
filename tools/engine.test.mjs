@@ -150,3 +150,35 @@ test('reset: returns to the initial position and clears history', async () => {
   assert.equal(g.moveCount, 0);
   assert.equal(g.undo(), false);
 });
+
+/* ---------- responsive board sizing ---------- */
+
+test('cellSize: a small board on desktop uses the full 44px cell', async () => {
+  const { cellSize } = await loadEngine();
+  assert.equal(cellSize(1080, 722, 6, 7), 44);
+});
+
+test('cellSize: never grows past 44px on a huge screen', async () => {
+  const { cellSize } = await loadEngine();
+  assert.equal(cellSize(2400, 2000, 4, 4), 44);
+});
+
+test('cellSize: the 30x17 finale fits inside a 390px phone', async () => {
+  const { cellSize } = await loadEngine();
+  const cell = cellSize(390, 844, 30, 17);
+  assert.ok(cell >= 10, 'cells stay legible');
+  assert.ok(cell * 30 <= 390 - 24, 'board must fit the phone width');
+  assert.ok(cell * 17 <= 844 - 300, 'board must fit the available height');
+});
+
+test('cellSize: desktop leaves room for the HUD on tall boards', async () => {
+  const { cellSize } = await loadEngine();
+  const cell = cellSize(1080, 722, 12, 16);
+  assert.ok(cell * 16 <= 722 - 300, 'tall board must not push controls off-screen');
+  assert.ok(cell <= 44);
+});
+
+test('cellSize: has a 10px floor so nothing collapses', async () => {
+  const { cellSize } = await loadEngine();
+  assert.equal(cellSize(320, 480, 40, 30), 10);
+});
