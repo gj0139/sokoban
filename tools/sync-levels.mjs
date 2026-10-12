@@ -13,11 +13,14 @@ const stats = (text) => {
 };
 
 const picked = [];
-for (let i = 0; i < ALL.length && picked.length < 20; i++) {
+for (let i = 0; i < ALL.length; i++) {
   const s = stats(ALL[i]);
   if (s.players === 1 && s.boxes === s.goals) picked.push(ALL[i]);
 }
-if (picked.length !== 20) throw new Error(`expected 20 valid levels, got ${picked.length}`);
+if (picked.length < ALL.length) {
+  throw new Error(`only ${picked.length}/${ALL.length} levels are well-formed — fix the reference data first`);
+}
+if (picked.length === 0) throw new Error('no valid levels found');
 
 const body = picked
   .map((lvl) => '    `' + lvl.split('\n').join('\n') + '`,')
