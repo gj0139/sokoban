@@ -1,6 +1,6 @@
 # 推箱子 · Sokoban
 
-一个**单文件、零依赖**的网页版推箱子游戏，收录 Microban 精选 20 关。
+一个**单文件、零依赖**的网页版推箱子游戏，收录 **Microban 完整 155 关**。
 
 🎮 **在线试玩**：https://gj0139.github.io/sokoban/
 
@@ -8,12 +8,13 @@
 
 ## 特性
 
-- **Microban 精选 20 关**，由易到难（含 6 箱对称关）
+- **Microban 完整 155 关**，由易到难（含 6 箱对称关，以及 30×17、11 箱的终局大关）
 - 方向键 / `W` `A` `S` `D` 移动；手机端支持**滑动手势 + 虚拟方向键**
 - 撤销（`Z`，无限步）、重玩（`R`）、选关（逐关解锁，标记 ✓ 最佳步数）
 - 步数 / 推动次数统计，箱子推上目标会变绿发光
 - **手机端默认全屏**：首次触摸自动进入全屏，工具栏也有 ⛶ 全屏开关；配合 PWA manifest（`display: fullscreen`）**添加到主屏幕后启动即全屏**，状态栏取主题色、刘海安全区已适配
 - 通关弹层与记录，进度用 `localStorage` 自动保存，刷新不丢
+- **关卡深链**：`sokoban.html?level=155` 直达并解锁任意一关，方便分享单关
 - 墙壳外的填充空格会被判定为「虚空」，不可走也不渲染
 
 ## 玩法
@@ -25,7 +26,7 @@
 关卡设计来自 **Microban 关卡集，作者 David W. Skinner（2000 年 4 月）**，可自由分发（需署名）。
 来源：<http://users.bentonrea.com/~sasquatch/sokoban/>
 
-本仓库只收录其中的前 20 关，完整 155 关见 `tools/ref-levels2.js`。
+本仓库收录**完整 155 关**；原始参考数据在 `tools/ref-levels2.js`。
 
 ## 项目结构
 
@@ -53,7 +54,7 @@ node --test tools/engine.test.mjs
 # 关卡数据校验
 node tools/verify-embed.mjs
 
-# 证明 20 关全部可解，并打印每关参考解
+# 逐关求解，证明可解并打印参考解（可调深度：SOLVE_MAX_NODES=15000000 node tools/solve.mjs）
 node tools/solve.mjs
 
 # 本地试玩 http://127.0.0.1:8321/sokoban.html
