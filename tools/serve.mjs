@@ -19,7 +19,8 @@ const TYPES = {
 createServer(async (req, res) => {
   try {
     const url = decodeURIComponent((req.url || '/').split('?')[0]);
-    let path = normalize(join(ROOT, url === '/' ? '/sokoban.html' : url));
+    // mirror GitHub Pages: "/" resolves to index.html (the forwarder), not the game
+    let path = normalize(join(ROOT, url));
     if (!path.startsWith(ROOT)) { res.writeHead(403).end('forbidden'); return; }
     if ((await stat(path)).isDirectory()) path = join(path, 'index.html');
     const body = await readFile(path);
