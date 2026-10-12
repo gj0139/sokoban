@@ -25,9 +25,18 @@ const game = await get(base + 'sokoban.html');
 console.log(`GET ${base}sokoban.html -> ${game.r.status}, ${game.html.length} bytes`);
 check('game', 'status200', game.r.status === 200);
 check('game', 'hasEngine', /<script id="engine">/.test(game.html));
-check('game', 'hasLevels', (game.html.match(/const LEVELS/g) || []).length === 1);
 check('game', 'hasTitle', /<title>推箱子/.test(game.html));
 check('game', 'hasUndo', game.html.includes('撤销'));
+
+/* --- level roster: every level of the Microban set must be embedded --- */
+const levelBlock = game.html.match(/const LEVELS = \[([\s\S]*?)\n  \];/);
+let levelCount = -1;
+try { levelCount = new Function(`return [${levelBlock[1]}];`)().length; } catch { /* reported as -1 */ }
+console.log(`levels embedded: ${levelCount}`);
+check('levels', 'count155', levelCount === 155);
+check('levels', 'noDuplicateDeclaration', (game.html.match(/const LEVELS/g) || []).length === 1);
+check('levels', 'countRenderedFromData', /id="lvTotal"/.test(game.html));
+check('levels', 'deepLinkParam', /\[\?\&\]level=/.test(game.html));
 
 /* --- mobile fullscreen: page meta --- */
 check('mobile', 'manifestLink', /rel="manifest"/.test(game.html));
@@ -37,6 +46,7 @@ check('mobile', 'themeColor', /name="theme-color"/.test(game.html));
 check('mobile', 'appleWebAppCapable', /apple-mobile-web-app-capable/.test(game.html));
 check('mobile', 'fullscreenButton', game.html.includes('id="fsBtn"'));
 check('mobile', 'dvhViewport', game.html.includes('100dvh'));
+check('mobile', 'responsiveCells', game.html.includes('function fitBoard'));
 
 /* --- PWA manifest --- */
 const mf = await get(base + 'manifest.json');
