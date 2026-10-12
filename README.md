@@ -36,6 +36,7 @@
 | `tools/solve.mjs` | BFS + 死格剪枝求解器，证明每一关都可解并给出参考解 |
 | `tools/build-levels.mjs` / `sync-levels.mjs` | 关卡筛选与机械同步（杜绝手抄转录错误） |
 | `tools/serve.mjs` | 本地试玩用的极简静态服务器 |
+| `tools/check-live.mjs` | 部署后冒烟检查：线上页面是否真的在提供游戏 |
 
 ## 开发与测试
 
